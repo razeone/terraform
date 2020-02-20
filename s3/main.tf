@@ -1,7 +1,7 @@
 # Terraform code to deploy a S3 bucket with website support
 
 provider "aws" {
-  region = "us-east-1"
+  region = "${var.default_region}"
 }
 
 resource "aws_s3_bucket" "website_test" {

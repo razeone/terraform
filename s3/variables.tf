@@ -7,3 +7,8 @@ variable "domain_name" {
   description = "Parent domain name"
   default     = ""
 }
+
+variable "default_region" {
+  description = "default region where the resources will be placed"
+  default = "us-east-1"
+}
