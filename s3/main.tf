@@ -13,15 +13,15 @@ resource "aws_s3_bucket" "website_test" {
     error_document = "error.html"
 
     routing_rules = <<EOF
-[{
-    "Condition": {
-        "KeyPrefixEquals": "docs/"
-    },
-    "Redirect": {
-        "ReplaceKeyPrefixWith": "documents/"
-    }
-}]
-EOF
+    [{
+        "Condition": {
+            "KeyPrefixEquals": "docs/"
+        },
+        "Redirect": {
+            "ReplaceKeyPrefixWith": "documents/"
+        }
+    }]
+    EOF
   }
 }
 
@@ -41,3 +41,21 @@ resource "aws_s3_bucket_policy" "bucket_policy" {
   bucket = "${aws_s3_bucket.website_test.id}"
   policy = "${data.aws_iam_policy_document.bucket_policy_doc.json}"
 }
+
+resource "aws_s3_bucket_object" "index" {
+  bucket  = "${aws_s3_bucket.website_test.id}"
+  key     = "index.html"
+  content_type = "text/html"
+  content = <<EOF
+  <h1>Deployed with Terraform</h1>
+  EOF
+}
+
+resource "aws_s3_bucket_object" "error" {
+  bucket  = "${aws_s3_bucket.website_test.id}"
+  key     = "error.html"
+  content = <<EOF
+  <h1>Error</h1>
+  EOF
+}
+
