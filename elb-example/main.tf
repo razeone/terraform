@@ -1,13 +1,25 @@
 
 provider "aws" {
-  region = "us-east-1"
+  region = "${var.deploy_region}"
 }
 
-variable "server_port" {
-  description = "The target port for the web server"
-  default     = 80
+data "aws_ami" "ubuntu" {
+  most_recent = true
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-trusty-14.04-amd64-server-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  owners = ["099720109477"] # Canonical
 }
 
+# I'll be using default VPC and subnets for this example
 resource "aws_default_vpc" "default" {
   tags = {
     Name = "Default VPC"
@@ -15,7 +27,7 @@ resource "aws_default_vpc" "default" {
 }
 
 resource "aws_default_subnet" "default_az1" {
-  availability_zone = "us-east-1a"
+  availability_zone = "${var.deploy_region}a"
 
   tags = {
     Name = "Default subnet for us-east-1a"
@@ -23,7 +35,7 @@ resource "aws_default_subnet" "default_az1" {
 }
 
 resource "aws_default_subnet" "default_az2" {
-  availability_zone = "us-east-1b"
+  availability_zone = "${var.deploy_region}b"
 
   tags = {
     Name = "Default subnet for us-east-1b"
@@ -42,8 +54,8 @@ resource "aws_security_group" "allow_http" {
   description = "Allows incoming public HTTP traffic"
 
   ingress {
-    from_port   = 80
-    to_port     = 80
+    from_port   = "${var.load_balancer_port}"
+    to_port     = "${var.load_balancer_port}"
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -54,22 +66,6 @@ resource "aws_security_group" "allow_http" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-}
-
-data "aws_ami" "ubuntu" {
-  most_recent = true
-
-  filter {
-    name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-trusty-14.04-amd64-server-*"]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-
-  owners = ["099720109477"] # Canonical
 }
 
 resource "aws_launch_configuration" "web_launch_config" {
@@ -92,9 +88,9 @@ resource "aws_launch_configuration" "web_launch_config" {
 resource "aws_autoscaling_group" "asg_test" {
   name                 = "terraform-asg-test"
   launch_configuration = "${aws_launch_configuration.web_launch_config.name}"
-  min_size             = 1
-  max_size             = 1
-  availability_zones   = ["us-east-1a"]
+  min_size             = "${var.min_size}"
+  max_size             = "${var.max_size}"
+  availability_zones   = ["${var.deploy_region}a"]
 
   lifecycle {
     create_before_destroy = true
@@ -136,7 +132,7 @@ resource "aws_lb" "test" {
   #}
 
   tags = {
-    Environment = "production"
+    Environment = "${var.environment}"
   }
 }
 
@@ -147,7 +143,7 @@ resource "aws_autoscaling_attachment" "asg_attachment_bar" {
 
 resource "aws_lb_listener" "web_listener" {
   load_balancer_arn = "${aws_lb.test.arn}"
-  port              = "80"
+  port              = "${var.load_balancer_port}"
   protocol          = "HTTP"
 
   default_action {
